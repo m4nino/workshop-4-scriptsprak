@@ -5,29 +5,69 @@ $path = ".\network_configs"
 
 
 # write section header to the report
-"=" * 80 | Out-File -FilePath "security_audit.txt"
-"|                     SECURITY AUDIT REPORT - TechCorp AB                      |" | Out-File -FilePath "security_audit.txt" -Append
-"=" * 80 | Out-File -FilePath "security_audit.txt" -Append
+@"
+================================================================================
+|                     SECURITY AUDIT REPORT - TechCorp AB                      |
+================================================================================
+"@ | Out-File -FilePath "security_audit.txt" -Force
+
 "Generated: $($now.ToString('yyyy-MM-dd'))" | Out-File -FilePath "security_audit.txt" -Append
 "Audit Path: $path" | Out-File -FilePath "security_audit.txt" -Append
 " " | Out-File -FilePath "security_audit.txt" -Append
 
+# file inventory
+@"
+FILE INVENTORY
+============== 
+File                Count       Total Size (KB)
+----                -----       ---------------
+"@ | Out-File -FilePath "security_audit.txt" -Append
+$allfiles = Get-ChildItem -Path $path -Recurse -File
+$groups = $allFiles |
+Group-Object Extension |
+Select-Object @{Name = "Extension"; Expression = { if ($_.Name) { $_.Name } else { "<no extension>" } } },
+@{Name = "Count"; Expression = { $_.Count } },
+@{Name = "TotalSizeKB"; Expression = { [math]::Round( ($_.Group | Measure-Object Length -Sum).Sum / 1KB, 2) } } 
+$order = @(".conf", ".log", ".rules", ".bak")
+$sorted = $groups | Sort-Object @{Expression = {
+        $idx = $order.IndexOf($_.Extension)
+        if ($idx -ge 0) { $idx } else { [int]::MaxValue }
+    }
+}, Extension
+$sorted | ForEach-Object {
+    "{0,-19} {1,-11} {2,-6}" -f $_.Extension, $_.Count, $_.TotalSizeKB
+}    | Out-String | Out-File -FilePath "security_audit.txt" -Append
+
+
 # files modified last 7 days
-"FILES MODIFIED LAST 7 DAYS" | Out-File -FilePath "security_audit.txt" -Append
-"=" * 27 | Out-File -FilePath "security_audit.txt" -Append
+@"
+
+FILES MODIFIED LAST 7 DAYS
+========================== 
+File name                       Size (KB)        Last write date 
+---------                       ---------        --------------- 
+"@ | Out-File -FilePath "security_audit.txt" -Append
 Get-ChildItem -Path $path -Recurse -File |
 Where-Object { $_.LastWriteTime -gt $weekAgo -and $_.LastWriteTime -le $now } |
 Sort-Object LastWriteTime -Descending |
-Select-Object Name,
-@{Name = "SizeKB"; Expression = { [math]::Round($_.Length / 1KB, 2) } },
-@{Name = "LastWriteDate"; Expression = { $_.LastWriteTime.ToString("yyyy-MM-dd") } } |
-Format-Table -AutoSize | Out-String |
-Out-File -FilePath "security_audit.txt" -Append
+ForEach-Object {
+    "{0,-31} {1,-16} {2,-14}" -f $_.Name,
+    [math]::Round($_.Length / 1KB, 2),
+    $_.LastWriteTime.ToString("yyy-MM-dd")
+} | Out-File -FilePath "Security_audit.txt" -Append
+
 
 # config_inventory.csv
 Get-ChildItem -Path $path -Recurse -Include *.conf, *.rules, *.log |
 Sort-Object  LastWRiteTime -Descending |
-Select-Object Name, 
-@{Name = "SizeKB"; Expression = { [math]::Round($_.Length / 1KB, 2) } },
-@{Name = "LastWriteDate"; Expression = { $_.LastWriteTime.ToString("yyyy-MM-dd") } } |
+Select-Object @{Name = "File name"; Expression = { $_.Name } }, 
+@{Name = "Size (KB)"; Expression = { [math]::Round($_.Length / 1KB, 2) } },
+@{Name = "Last write date"; Expression = { $_.LastWriteTime.ToString("yyyy-MM-dd") } } |
 Export-Csv -Path "config_inventory.csv" -NoTypeInformation -Encoding UTF8
+
+
+@"
+================================================================================
+|                           END OF REPORT - TechCorp AB                        |
+================================================================================
+"@ | Out-File -FilePath "security_audit.txt" -Append

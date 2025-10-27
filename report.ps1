@@ -79,6 +79,8 @@ ForEach-Object {
 
 $patterns = "ERROR", "FAILED", "DENIED"
 
+# security issues in log files
+
 @"
 
 
@@ -96,6 +98,8 @@ Get-ChildItem -Path $path -Recurse -Filter *.log | ForEach-Object {
 
     "{0,-31} {1,-7} {2,-8} {3,-7}" -f $_.Name, $errorCount, $failedCount, $deniedCount
 } | Out-File -FilePath "security_audit.txt" -Append
+
+# failed login attempts
 
 @"
 
@@ -124,10 +128,52 @@ $failedIPs | Group-Object | ForEach-Object {
     "- $($_.Count) attempts from $($_.Name)"
 } | Out-File -FilePath "security_audit.txt" -Append
 
+# weak configuration warnings
 
+@"
+
+
+WEAK CONFIGURATION WARNINGS
+===========================
+"@  | Out-File -FilePath "security_audit.txt" -Append
+
+$weakPatterns = "password", "1234", "default", "plaintext"
+
+Get-ChildItem -Path $path -Recurse -Filter *.conf |
+Select-String -Pattern $weakPatterns |
+ForEach-Object {
+    "{0,-25} (line {1}): {2}" -f $_.Filename, $_.LineNumber, $_.Line.Trim()
+}
+| Out-File -FilePath "security_audit.txt" -Append
+
+# files missing backup
+
+@"
+
+
+FILES MISSING BACKUP
+--------------------
+"@ | Out-File -FilePath "security_audit.txt" -Append
+
+$confFiles = Get-ChildItem -Path $path -Recurse -Filter *.conf
+$bakFiles = Get-ChildItem -Path $path -Recurse -Filter *.bak
+
+$confBase = $confFiles.BaseName | ForEach-Object { $_.ToLower() }
+$bakBase = $bakFiles.BaseName | ForEach-Object { $_.ToLower() }
+
+$missing = $confBase | Where-Object { $_ -notin $bakBase }
+
+if ($missing) {
+    "Missing backup: $($missing.Count)" | Out-File -FilePath "security_audit.txt" -Append
+    $missing | ForEach-Object { "- {0}.conf" -f $_ } |
+    Out-File -FilePath "security_audit.txt" -Append
+}
+else {
+    "No missing backups detected." | Out-File -FilePath "security_audit.txt" -Append
+}
 
 # ip_addresses.csv
-$ipPattern = "\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
+$ipPattern = "\d{ 1, 3 }\.\d { 1, 3 }\.\d { 1, 3 }\.\d { 1, 3 }"
 
 Get-ChildItem -Path $path -Recurse -Filter *.conf |
 Select-String -Pattern $ipPattern -AllMatches |
@@ -149,6 +195,6 @@ Export-Csv -Path "config_inventory.csv" -NoTypeInformation -Encoding UTF8
 @"
 
 ================================================================================
-|                           END OF REPORT - TechCorp AB                        |
+|                          END OF REPORT - TechCorp AB                         |
 ================================================================================
 "@ | Out-File -FilePath "security_audit.txt" -Append

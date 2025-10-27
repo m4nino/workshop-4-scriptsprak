@@ -77,6 +77,16 @@ ForEach-Object {
     $_.LastWriteTime.ToString("yyy-MM-dd")
 } | Out-File -FilePath "Security_audit.txt" -Append
 
+# all the unique ip addresses found in config.files
+$ipPattern = "\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
+
+Get-ChildItem -Path $path -Recurse -Filter *.conf |
+Select-String -Pattern $ipPattern -AllMatches |
+ForEach-Object { $_.Matches.Value } |
+Sort-Object -Unique |
+ForEach-Object {
+    [PSCustomObject]@{IPAdress = $_ }
+} | Export-Csv -Path "ip_addresses.csv" -NoTypeInformation -Encoding UTF8
 
 
 # config_inventory.csv

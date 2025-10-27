@@ -17,6 +17,8 @@ $path = ".\network_configs"
 
 # file inventory
 @"
+
+
 FILE INVENTORY
 ============== 
 File                Count       Total Size (KB)
@@ -38,9 +40,28 @@ $sorted | ForEach-Object {
     "{0,-19} {1,-11} {2,-6}" -f $_.Extension, $_.Count, $_.TotalSizeKB
 }    | Out-String | Out-File -FilePath "security_audit.txt" -Append
 
+@"
+
+
+TOP 5 LARGEST LOG FILES
+=======================
+File name                      Size (KB) 
+---------                      ---------
+"@ | Out-File -FilePath "security_audit.txt" -Append
+
+Get-ChildItem -Path $path -Recurse -File -Filter *.log |
+Sort-Object Length -Descending |
+Select-Object -First 5 |
+ForEach-Object {
+    "{0,-25} {1,10:N2}" -f $_.Name,
+    ($_.Length / 1KB)
+} | Out-File -FilePath "security_audit.txt" -Append
+
 
 # files modified last 7 days
 @"
+
+
 
 FILES MODIFIED LAST 7 DAYS
 ========================== 
@@ -57,6 +78,7 @@ ForEach-Object {
 } | Out-File -FilePath "Security_audit.txt" -Append
 
 
+
 # config_inventory.csv
 Get-ChildItem -Path $path -Recurse -Include *.conf, *.rules, *.log |
 Sort-Object  LastWRiteTime -Descending |
@@ -67,6 +89,7 @@ Export-Csv -Path "config_inventory.csv" -NoTypeInformation -Encoding UTF8
 
 
 @"
+
 ================================================================================
 |                           END OF REPORT - TechCorp AB                        |
 ================================================================================

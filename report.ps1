@@ -191,6 +191,23 @@ Select-Object @{Name = "File name"; Expression = { $_.Name } },
 @{Name = "Last write date"; Expression = { $_.LastWriteTime.ToString("yyyy-MM-dd") } } |
 Export-Csv -Path "config_inventory.csv" -NoTypeInformation -Encoding UTF8
 
+# compare to baseline
+$baseline = Get-Content "$path\network_configs\baseline\baseline-router.conf"
+$current = Get-ChildItem -Path $path -Recurse -Filter *.conf |
+Where-Object { $_.Name -ne "baseline-router.conf" }
+
+$results = foreach ($file in $current) {
+    $diff = Compare-Object -ReferenceObject $baseline -DifferenceObject (Get-Content $file.FullName)
+    foreach ($entry in $diff) {
+        [PSCustomObject]@{
+            File          = $file.Name
+            Difference    = $entry.InputObject
+            SideIndicator = $entry.SideIndicator
+        }
+    }
+}
+
+$results | Export-Csv -Path "config_differences.csv" -NoTypeInformation -Encoding UTF8
 
 @"
 

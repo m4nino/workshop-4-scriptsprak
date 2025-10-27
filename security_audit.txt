@@ -46,6 +46,30 @@ RT-EDGE-02.conf                 0,58             2024-10-10
 SW-CORE-02.conf                 0,59             2024-10-09    
 RT-LAGER-01.conf                0,59             2024-10-08    
 
+
+SECURITY ISSUES IN LOG FILES
+============================
+File name                       Error   Failed   Denied
+---------                       -----   ------   ------
+access-2024-10-14.log           0       3        1      
+security-2024-10-13.log         6       6        1      
+security-2024-10-14.log         6       4        1      
+system-2024-10-13.log           5       1        0      
+system-2024-10-14.log           5       1        0      
+
+
+FAILED LOGIN ATTEMPTS
+=====================
+Failed Login Attempts: 15
+- 1 attempts from 10.0.0.100
+- 1 attempts from 10.0.0.5
+- 1 attempts from 10.0.0.66
+- 1 attempts from 10.0.0.77
+- 3 attempts from 10.0.0.99
+- 1 attempts from 192.168.30.10
+- 2 attempts from 203.0.113.99
+- 5 attempts from unknown sources
+
 ================================================================================
 |                           END OF REPORT - TechCorp AB                        |
 ================================================================================

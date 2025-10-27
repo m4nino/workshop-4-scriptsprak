@@ -77,7 +77,56 @@ ForEach-Object {
     $_.LastWriteTime.ToString("yyy-MM-dd")
 } | Out-File -FilePath "Security_audit.txt" -Append
 
-# all the unique ip addresses found in config.files
+$patterns = "ERROR", "FAILED", "DENIED"
+
+@"
+
+
+SECURITY ISSUES IN LOG FILES
+============================
+File name                       Error   Failed   Denied
+---------                       -----   ------   ------
+"@ | Out-File -FilePath "security_audit.txt" -Append
+
+Get-ChildItem -Path $path -Recurse -Filter *.log | ForEach-Object {
+    $file = $_.FullName
+    $errorCount = (Select-String -Path $file -Pattern "ERROR" -SimpleMatch | Measure-Object).Count
+    $failedCount = (Select-String -Path $file -Pattern "FAILED" -SimpleMatch | Measure-Object).Count
+    $deniedCount = (Select-String -Path $file -Pattern "DENIED" -SimpleMatch | Measure-Object).Count
+
+    "{0,-31} {1,-7} {2,-8} {3,-7}" -f $_.Name, $errorCount, $failedCount, $deniedCount
+} | Out-File -FilePath "security_audit.txt" -Append
+
+@"
+
+
+FAILED LOGIN ATTEMPTS
+=====================
+"@ | Out-File -FilePath "security_audit.txt" -Append
+
+$ipPattern = "\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
+
+$failedLines = Get-ChildItem -Path $path -Recurse -Filter *.log |
+Select-String -Pattern "FAILED"
+
+$failedIPs = foreach ($line in $failedLines) {
+    if ($line.line -match $ipPattern) {
+        $matches[0]
+    }
+    else {
+        "unknown sources"
+    }
+}
+$total = $failedIPs.Count
+"Failed Login Attempts: $total" | Out-File -FilePath "security_audit.txt" -Append
+
+$failedIPs | Group-Object | ForEach-Object {
+    "- $($_.Count) attempts from $($_.Name)"
+} | Out-File -FilePath "security_audit.txt" -Append
+
+
+
+# ip_addresses.csv
 $ipPattern = "\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
 
 Get-ChildItem -Path $path -Recurse -Filter *.conf |
@@ -87,7 +136,6 @@ Sort-Object -Unique |
 ForEach-Object {
     [PSCustomObject]@{IPAdress = $_ }
 } | Export-Csv -Path "ip_addresses.csv" -NoTypeInformation -Encoding UTF8
-
 
 # config_inventory.csv
 Get-ChildItem -Path $path -Recurse -Include *.conf, *.rules, *.log |

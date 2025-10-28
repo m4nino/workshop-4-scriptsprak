@@ -3,7 +3,69 @@ $now = Get-Date "2024-10-14"
 $weekAgo = $now.AddDays(-7)
 $path = ".\network_configs"
 
+# function
 
+function Find-SecurityIssues {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $files = Get-ChildItem -Path $Path -Recurse -Filter *.conf
+
+    foreach ($file in $files) {
+        $content = Get-Content $file.FullName
+        $issues = @()
+
+        $issues += ($content | Select-String -Pattern '\b(password|secret)\b' -SimpleMatch)
+        $issues += ($content | Select-String -Pattern '\b(public|private)\b' -SimpleMatch)
+
+        $issues += ($content | Select-String -Pattern 'enable password' -SimpleMatch)
+
+        $issues += ($content | Select-String -Pattern 'username .* password' -SimpleMatch)
+        
+        $issues += ($content | Select-String -Pattern '\btelnet\b' -SimpleMatch)
+
+        $issues += ($content | Select-String -Pattern 'ip http server' -SimpleMatch)
+
+        $issues += ($conent | Select-String -Pattern 'logic local' -SimpleMatch)
+
+        $issues += ($content | Select-String -Pattern '\bdefault\b' -SimpleMatch)
+
+        foreach ($match in $issues | Where-Object { $_ }) {
+            [PSCustomObject]@{
+                File     = $file.Name
+                Line     = $match.LineNumber
+                Text     = $match.Line.Trim()
+                Category = if ($match.Line -match 'enable password') {
+                    'weak enable password'
+                }
+                elseif ($match.Line -match 'snmp-server community|public|private') {
+                    'Weak SNMP community'
+                }
+                elseif ($match.Line -match 'username .* password') {
+                    'user with cleartext password'
+                }
+                elseif ($match.Line -match 'telnet') {
+                    'Insecure remote access (Telnet)'
+                }
+                elseif ($match.Line -match 'ip http server') {
+                    'Insecure management access (HTTP)'
+                }
+                elseif ($match.Line -match 'login local') {
+                    'Local login without AAA'
+                }
+                elseif ($match.Line -match 'default') {
+                    'Default configuration'
+                }
+                else {
+                    'Password/Secret in cleartext'
+                }
+            }
+        }
+    }
+
+}
 # write section header to the report
 @"
 ================================================================================
@@ -40,6 +102,7 @@ $sorted | ForEach-Object {
     "{0,-19} {1,-11} {2,-6}" -f $_.Extension, $_.Count, $_.TotalSizeKB
 }    | Out-String | Out-File -FilePath "security_audit.txt" -Append
 
+# top 5 largest log files
 @"
 
 
@@ -74,13 +137,11 @@ Sort-Object LastWriteTime -Descending |
 ForEach-Object {
     "{0,-31} {1,-16} {2,-14}" -f $_.Name,
     [math]::Round($_.Length / 1KB, 2),
-    $_.LastWriteTime.ToString("yyy-MM-dd")
-} | Out-File -FilePath "Security_audit.txt" -Append
+    $_.LastWriteTime.ToString("yyyy-MM-dd")
+} | Out-File -FilePath "security_audit.txt" -Append
 
-$patterns = "ERROR", "FAILED", "DENIED"
 
 # security issues in log files
-
 @"
 
 
@@ -100,7 +161,6 @@ Get-ChildItem -Path $path -Recurse -Filter *.log | ForEach-Object {
 } | Out-File -FilePath "security_audit.txt" -Append
 
 # failed login attempts
-
 @"
 
 
@@ -129,7 +189,6 @@ $failedIPs | Group-Object | ForEach-Object {
 } | Out-File -FilePath "security_audit.txt" -Append
 
 # weak configuration warnings
-
 @"
 
 
@@ -137,17 +196,12 @@ WEAK CONFIGURATION WARNINGS
 ===========================
 "@  | Out-File -FilePath "security_audit.txt" -Append
 
-$weakPatterns = "password", "1234", "default", "plaintext"
-
-Get-ChildItem -Path $path -Recurse -Filter *.conf |
-Select-String -Pattern $weakPatterns |
-ForEach-Object {
-    "{0,-25} (line {1}): {2}" -f $_.Filename, $_.LineNumber, $_.Line.Trim()
-}
-| Out-File -FilePath "security_audit.txt" -Append
+Find-SecurityIssues -Path $path | 
+where-Object { $_ -ne $null } | ForEach-Object {
+    "{0,-22} (line {1,2}): {2,-30} [{3,-10}]" -f $_.File, $_.Line, $_.Text, $_.Category
+} | Out-File -FilePath "security_audit.txt" -Append
 
 # files missing backup
-
 @"
 
 

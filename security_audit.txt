@@ -73,18 +73,11 @@ Failed Login Attempts: 15
 
 WEAK CONFIGURATION WARNINGS
 ===========================
-baseline-router.conf      (line 4): service password-encryption
-RT-EDGE-01.conf           (line 35): password 7 0822455D0A16
-RT-EDGE-02.conf           (line 7): enable password cisco123
-RT-LAGER-01.conf          (line 7): enable secret 5 $1$xyz$abcdef123456789
-RT-LAGER-01.conf          (line 21): password cisco
-SW-ACCESS-01.conf         (line 8): enable password password
-SW-ACCESS-01.conf         (line 23): ! WARNING: Default SNMP community
-SW-ACCESS-01.conf         (line 29): ip default-gateway 192.168.1.1
-SW-CORE-01.conf           (line 33): ip default-gateway 192.168.10.254
-SW-CORE-01.conf           (line 35): ! ERROR: Default credentials still in use
-SW-CORE-02.conf           (line 7): enable password Password123
-SW-CORE-02.conf           (line 31): username admin password 0 admin123
+baseline-router.conf   (line  6): no ip http server              [Insecure management access (HTTP)]
+RT-EDGE-02.conf        (line  7): enable password cisco123       [weak enable password]
+SW-ACCESS-01.conf      (line  8): enable password password       [weak enable password]
+SW-CORE-02.conf        (line  7): enable password Password123    [weak enable password]
+SW-CORE-02.conf        (line 28): ip http server                 [Insecure management access (HTTP)]
 
 
 FILES MISSING BACKUP

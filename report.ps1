@@ -28,7 +28,7 @@ function Find-SecurityIssues {
 
         $issues += ($content | Select-String -Pattern 'ip http server' -SimpleMatch)
 
-        $issues += ($conent | Select-String -Pattern 'logic local' -SimpleMatch)
+        $issues += ($content | Select-String -Pattern 'logic local' -SimpleMatch)
 
         $issues += ($content | Select-String -Pattern '\bdefault\b' -SimpleMatch)
 
@@ -227,7 +227,7 @@ else {
 }
 
 # ip_addresses.csv
-$ipPattern = "\d{ 1, 3 }\.\d { 1, 3 }\.\d { 1, 3 }\.\d { 1, 3 }"
+$ipPattern = "\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
 
 Get-ChildItem -Path $path -Recurse -Filter *.conf |
 Select-String -Pattern $ipPattern -AllMatches |
